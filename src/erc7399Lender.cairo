@@ -33,8 +33,6 @@ trait IERC7399Trait<TState> {
     ) -> bool;
 }
 
-/// @dev Starknet Contract for flash loan of a single borrower
-// importing interface so we can access the dispatcher  //
 #[starknet::interface]
 trait IERC7399RecieverTrait<TState> {
     // /**
@@ -53,6 +51,13 @@ trait IERC7399RecieverTrait<TState> {
         token: ContractAddress,
         amount: u256,
         fee: u256,
+        data: felt252
+    ) -> bool;
+
+    fn flashBorrow(
+        ref self: TState,
+        token: ContractAddress,
+        amount: u256,
         data: felt252
     ) -> bool;
 }
@@ -126,14 +131,13 @@ mod ERC7399Lender {
             data: felt252
         ) -> bool {
             let feeCal = self._flashFee(amount);
-            let token: ContractAddress = self.assetAddress.read();
+            let this_contract = get_contract_address();
             let initiator: ContractAddress = get_caller_address();
-            self._serveLoan(loanReceiver, amount);
-            self._onFlashLoan(loanReceiver, initiator, token, amount, feeCal, data);
             let updatedFee: u256 = amount + feeCal;
-            self._acceptTransfer(updatedFee);
+            self._serveLoan(loanReceiver, amount);
+            self._onFlashLoan(loanReceiver, initiator, asset, amount, feeCal, data);
+            self._acceptTransfer(asset,initiator,this_contract,updatedFee); 
             self.emit(Flash { from: asset, amount: amount, fee: feeCal });
-
             true
         }
 
@@ -153,18 +157,16 @@ mod ERC7399Lender {
 
         fn _serveLoan(ref self: ContractState, loanReceiver: ContractAddress, amount: u256) {
             let token: ContractAddress = self.assetAddress.read();
-            let contract_this_address = get_contract_address();
             let reserves_: u256 = self.reserves.read();
             let nreserves_: u256 = reserves_ - amount;
             self.reserves.write(nreserves_);
 
             IERC20Dispatcher { contract_address: token }
-                .transfer_from(contract_this_address, loanReceiver, amount);
+                .transfer(loanReceiver, amount);
         }
 
-        fn _acceptTransfer(ref self: ContractState, flashAmount: u256) {
-            let assetAddress_ = self.assetAddress.read();
-            let caller: ContractAddress = get_caller_address();
+        fn _acceptTransfer(ref self: ContractState,asset: ContractAddress,initiator:ContractAddress,this_contract:ContractAddress, repaymentAmount: u256) {
+            IERC20Dispatcher {contract_address:asset}.transfer_from(initiator,this_contract,repaymentAmount);
         }
 
         fn _sync(ref self: ContractState) {

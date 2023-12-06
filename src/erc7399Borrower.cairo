@@ -20,6 +20,46 @@ trait IERC7399RecieverTrait<TState> {
         fee: u256,
         data: felt252
     ) -> bool;
+
+    fn flashBorrow(
+        ref self: TState,
+        token: ContractAddress,
+        amount: u256,
+        data: felt252
+    ) -> bool;
+}
+
+#[starknet::interface]
+trait IERC7399Trait<TState> {
+    /// @dev The amount of currency available to be lent.
+    /// @param asset The loan currency.
+    /// @return The amount of `asset` that can be borrowed.
+    fn maxFlashLoanSync(ref self: TState, asset: ContractAddress) -> u256;
+
+    fn maxFlashLoan(self: @TState) -> u256;
+
+    /// @dev The fee to be charged for a given loan. Returns type(uint256).max if the loan is not possible.
+    /// @param asset The loan currency.
+    /// @param amount The amount of assets lent.
+    /// @return The amount of `asset` to be charged for the loan, on top of the returned principal.
+
+    fn flashFee(self: @TState, asset: ContractAddress, amount: u256) -> u256;
+
+    /// @dev Initiate a flash loan.
+    /// @param loanReceiver The address receiving the flash loan
+    /// @param asset The asset to be loaned
+    /// @param amount The amount to loaned
+    /// @param data The ABI encoded user data
+    /// @param callback The address and signature of the callback function
+    /// @return result ABI encoded result of the callback
+
+    fn flash(
+        ref self: TState,
+        loanReceiver: ContractAddress,
+        asset: ContractAddress,
+        amount: u256,
+        data: felt252,
+    ) -> bool;
 }
 
 #[starknet::contract]
@@ -30,7 +70,7 @@ mod ERC7399Borrower {
     use openzeppelin::token::erc20::ERC20Component;
     use openzeppelin::token::erc20::interface::IERC20Dispatcher;
     use starknet::info::get_contract_address;
-    use super::IERC7399RecieverTrait;
+    use super::{IERC7399TraitDispatcher,IERC7399TraitDispatcherTrait};
 
     /// @dev 
     #[storage]
@@ -62,5 +102,22 @@ mod ERC7399Borrower {
 
             true
         }
+
+        fn flashBorrow(
+            ref self: ContractState,
+            token: ContractAddress,
+            amount: u256,
+            data: felt252
+        ) -> bool {
+            let this_contract = get_contract_address();
+            let flash_lender = self.lenderAddress.read();
+            let feeCal = IERC7399TraitDispatcher {contract_address:flash_lender}.flashFee(token,amount);
+            let repayment_: u256 = (amount + feeCal);
+            IERC20Dispatcher {contract_address: token}.approve(flash_lender,repayment_);
+            let _bool: bool = IERC7399TraitDispatcher {contract_address:flash_lender}.flash(this_contract,token,amount,data);
+            _bool
+        }
     }
+
+        
 }
