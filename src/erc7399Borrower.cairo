@@ -21,12 +21,7 @@ trait IERC7399RecieverTrait<TState> {
         data: felt252
     ) -> bool;
 
-    fn flashBorrow(
-        ref self: TState,
-        token: ContractAddress,
-        amount: u256,
-        data: felt252
-    ) -> bool;
+    fn flashBorrow(ref self: TState, token: ContractAddress, amount: u256, data: felt252) -> bool;
 }
 
 #[starknet::interface]
@@ -70,7 +65,7 @@ mod ERC7399Borrower {
     use openzeppelin::token::erc20::ERC20Component;
     use openzeppelin::token::erc20::interface::IERC20Dispatcher;
     use starknet::info::get_contract_address;
-    use super::{IERC7399TraitDispatcher,IERC7399TraitDispatcherTrait};
+    use super::{IERC7399TraitDispatcher, IERC7399TraitDispatcherTrait};
 
     /// @dev 
     #[storage]
@@ -104,20 +99,17 @@ mod ERC7399Borrower {
         }
 
         fn flashBorrow(
-            ref self: ContractState,
-            token: ContractAddress,
-            amount: u256,
-            data: felt252
+            ref self: ContractState, token: ContractAddress, amount: u256, data: felt252
         ) -> bool {
             let this_contract = get_contract_address();
             let flash_lender = self.lenderAddress.read();
-            let feeCal = IERC7399TraitDispatcher {contract_address:flash_lender}.flashFee(token,amount);
+            let feeCal = IERC7399TraitDispatcher { contract_address: flash_lender }
+                .flashFee(token, amount);
             let repayment_: u256 = (amount + feeCal);
-            IERC20Dispatcher {contract_address: token}.approve(flash_lender,repayment_);
-            let _bool: bool = IERC7399TraitDispatcher {contract_address:flash_lender}.flash(this_contract,token,amount,data);
+            IERC20Dispatcher { contract_address: token }.approve(flash_lender, repayment_);
+            let _bool: bool = IERC7399TraitDispatcher { contract_address: flash_lender }
+                .flash(this_contract, token, amount, data);
             _bool
         }
     }
-
-        
 }

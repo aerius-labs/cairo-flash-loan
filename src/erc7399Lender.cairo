@@ -54,12 +54,7 @@ trait IERC7399RecieverTrait<TState> {
         data: felt252
     ) -> bool;
 
-    fn flashBorrow(
-        ref self: TState,
-        token: ContractAddress,
-        amount: u256,
-        data: felt252
-    ) -> bool;
+    fn flashBorrow(ref self: TState, token: ContractAddress, amount: u256, data: felt252) -> bool;
 }
 
 #[starknet::contract]
@@ -136,7 +131,7 @@ mod ERC7399Lender {
             let updatedFee: u256 = amount + feeCal;
             self._serveLoan(loanReceiver, amount);
             self._onFlashLoan(loanReceiver, initiator, asset, amount, feeCal, data);
-            self._acceptTransfer(asset,initiator,this_contract,updatedFee); 
+            self._acceptTransfer(asset, initiator, this_contract, updatedFee);
             self.emit(Flash { from: asset, amount: amount, fee: feeCal });
             true
         }
@@ -161,12 +156,18 @@ mod ERC7399Lender {
             let nreserves_: u256 = reserves_ - amount;
             self.reserves.write(nreserves_);
 
-            IERC20Dispatcher { contract_address: token }
-                .transfer(loanReceiver, amount);
+            IERC20Dispatcher { contract_address: token }.transfer(loanReceiver, amount);
         }
 
-        fn _acceptTransfer(ref self: ContractState,asset: ContractAddress,initiator:ContractAddress,this_contract:ContractAddress, repaymentAmount: u256) {
-            IERC20Dispatcher {contract_address:asset}.transfer_from(initiator,this_contract,repaymentAmount);
+        fn _acceptTransfer(
+            ref self: ContractState,
+            asset: ContractAddress,
+            initiator: ContractAddress,
+            this_contract: ContractAddress,
+            repaymentAmount: u256
+        ) {
+            IERC20Dispatcher { contract_address: asset }
+                .transfer_from(initiator, this_contract, repaymentAmount);
         }
 
         fn _sync(ref self: ContractState) {
