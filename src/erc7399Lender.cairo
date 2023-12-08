@@ -85,6 +85,7 @@ mod ERC7399Lender {
         self.owner.write(CALLER);
         self.fee.write(fee);
         self.assetAddress.write(assetAddress);
+        self.lenderAddress.write(this_contract);
     }
 
     #[event]
@@ -154,8 +155,8 @@ mod ERC7399Lender {
         // internal functions of contract
         fn _flashFee(self: @ContractState, amount: u256) -> u256 {
             let fee_: u256 = self.fee.read();
-            let FEE_CHARGED: u256 = 1000;
-            let result: u256 = (amount * fee_) / 1000_u256; // perform some computations
+            let FEE_CHARGED: u256 = 1000;   // this will be in decimals multiple by token decimals value //
+            let result: u256 = (amount * fee_) / FEE_CHARGED; // perform some computations
             result
         }
 
