@@ -95,6 +95,12 @@ mod ERC7399Borrower {
             assert(caller == flash_lender, 'caller must be lender');
             assert(initiator == this_address, 'intiator is not borrower');
 
+            //////////////////////////////////////////////////////////////*
+
+            ///Do you thing here///
+
+            ////////////////////////////////////////////////////////////
+
             true
         }
 
