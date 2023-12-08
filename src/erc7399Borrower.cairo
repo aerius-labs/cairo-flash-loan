@@ -112,6 +112,7 @@ mod ERC7399Borrower {
             let feeCal = IERC7399TraitDispatcher { contract_address: flash_lender }
                 .flashFee(token, amount);
             let repayment_: u256 = (amount + feeCal);
+            // calculated replayment_ so that only lender can perform transfer when calling lender contract //
             IERC20Dispatcher { contract_address: token }.approve(flash_lender, repayment_);
             let _bool: bool = IERC7399TraitDispatcher { contract_address: flash_lender }
                 .flash(this_contract, token, amount, data);

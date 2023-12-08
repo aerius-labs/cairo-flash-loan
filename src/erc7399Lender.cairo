@@ -135,7 +135,9 @@ mod ERC7399Lender {
             let assetAddress = self.assetAddress.read();
             assert(assetAddress == asset, 'asset is not used by lender');
             let feeCal = self._flashFee(amount);
+            // when called from borrower get_contract_address is borrower
             let this_contract = self.lenderAddress.read();
+            // when called from borrower it is borrower address //
             let initiator: ContractAddress = get_caller_address();
             let updatedFee: u256 = amount + feeCal;
             self._serveLoan(loanReceiver, amount);
@@ -154,8 +156,9 @@ mod ERC7399Lender {
     impl FlashFunctions of FlashFunctionsTrait {
         // internal functions of contract
         fn _flashFee(self: @ContractState, amount: u256) -> u256 {
+            // this will be in decimals multiple by token decimals value //
             let fee_: u256 = self.fee.read();
-            let FEE_CHARGED: u256 = 1000;   // this will be in decimals multiple by token decimals value //
+            let FEE_CHARGED: u256 = 1000;
             let result: u256 = (amount * fee_) / FEE_CHARGED; // perform some computations
             result
         }
@@ -165,7 +168,6 @@ mod ERC7399Lender {
             let reserves_: u256 = self.reserves.read();
             let nreserves_: u256 = reserves_ - amount;
             self.reserves.write(nreserves_);
-
             IERC20Dispatcher { contract_address: token }.transfer(loanReceiver, amount);
         }
 
