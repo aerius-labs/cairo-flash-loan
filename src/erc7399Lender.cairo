@@ -67,12 +67,13 @@ mod ERC7399Lender {
     use openzeppelin::token::erc20::interface::IERC20Dispatcher;
     use starknet::info::get_contract_address;
     use super::{IERC7399RecieverTraitDispatcher, IERC7399RecieverTraitDispatcherTrait};
-
+    
     /// @dev 
     #[storage]
     struct Storage {
         owner: ContractAddress,
         assetAddress: ContractAddress,
+        lenderAddress: ContractAddress,
         fee: u256,
         reserves: u256
     }
@@ -80,6 +81,7 @@ mod ERC7399Lender {
     #[constructor]
     fn constructor(ref self: ContractState, assetAddress: ContractAddress, fee: u256) {
         let CALLER: ContractAddress = get_caller_address();
+        let this_contract = get_contract_address();
         self.owner.write(CALLER);
         self.fee.write(fee);
         self.assetAddress.write(assetAddress);
@@ -103,13 +105,17 @@ mod ERC7399Lender {
     impl IERC7399TraitImpl of super::IERC7399Trait<ContractState> {
         /// this will read the total resevres of the lender contract
         fn maxFlashLoanSync(ref self: ContractState, asset: ContractAddress) -> u256 {
+            let assetAddress = self.assetAddress.read();
+            assert(assetAddress == asset,'asset is not used by lender');
             self._sync();
             self.reserves.read()
         }
         /// this will the function that will get the flash fee
         fn flashFee(self: @ContractState, asset: ContractAddress, amount: u256) -> u256 {
+            let assetAddress = self.assetAddress.read();
+            assert(assetAddress == asset,'asset is not used by lender');
             let currReserves: u256 = self.reserves.read();
-            if amount.low <= currReserves.low && amount.high <= currReserves.high {
+            if amount <= currReserves {
                 let result: u256 = self._flashFee(amount);
                 result
             } else {
@@ -125,8 +131,10 @@ mod ERC7399Lender {
             amount: u256,
             data: felt252
         ) -> bool {
+            let assetAddress = self.assetAddress.read();
+            assert(assetAddress == asset,'asset is not used by lender');
             let feeCal = self._flashFee(amount);
-            let this_contract = get_contract_address();
+            let this_contract = self.lenderAddress.read();
             let initiator: ContractAddress = get_caller_address();
             let updatedFee: u256 = amount + feeCal;
             self._serveLoan(loanReceiver, amount);
@@ -146,7 +154,8 @@ mod ERC7399Lender {
         // internal functions of contract
         fn _flashFee(self: @ContractState, amount: u256) -> u256 {
             let fee_: u256 = self.fee.read();
-            let result: u256 = (amount * fee_); // perform some computations
+            let FEE_CHARGED: u256 = 1000;
+            let result: u256 = (amount * fee_)/ 1000_u256; // perform some computations
             result
         }
 
@@ -166,6 +175,9 @@ mod ERC7399Lender {
             this_contract: ContractAddress,
             repaymentAmount: u256
         ) {
+            let reserves_: u256 = self.reserves.read();
+            let nreserves_: u256 = reserves_ + repaymentAmount;
+            self.reserves.write(nreserves_);
             IERC20Dispatcher { contract_address: asset }
                 .transfer_from(initiator, this_contract, repaymentAmount);
         }
