@@ -67,7 +67,7 @@ mod ERC7399Lender {
     use openzeppelin::token::erc20::interface::IERC20Dispatcher;
     use starknet::info::get_contract_address;
     use super::{IERC7399RecieverTraitDispatcher, IERC7399RecieverTraitDispatcherTrait};
-    
+
     /// @dev 
     #[storage]
     struct Storage {
@@ -106,14 +106,14 @@ mod ERC7399Lender {
         /// this will read the total resevres of the lender contract
         fn maxFlashLoanSync(ref self: ContractState, asset: ContractAddress) -> u256 {
             let assetAddress = self.assetAddress.read();
-            assert(assetAddress == asset,'asset is not used by lender');
+            assert(assetAddress == asset, 'asset is not used by lender');
             self._sync();
             self.reserves.read()
         }
         /// this will the function that will get the flash fee
         fn flashFee(self: @ContractState, asset: ContractAddress, amount: u256) -> u256 {
             let assetAddress = self.assetAddress.read();
-            assert(assetAddress == asset,'asset is not used by lender');
+            assert(assetAddress == asset, 'asset is not used by lender');
             let currReserves: u256 = self.reserves.read();
             if amount <= currReserves {
                 let result: u256 = self._flashFee(amount);
@@ -132,7 +132,7 @@ mod ERC7399Lender {
             data: felt252
         ) -> bool {
             let assetAddress = self.assetAddress.read();
-            assert(assetAddress == asset,'asset is not used by lender');
+            assert(assetAddress == asset, 'asset is not used by lender');
             let feeCal = self._flashFee(amount);
             let this_contract = self.lenderAddress.read();
             let initiator: ContractAddress = get_caller_address();
@@ -155,7 +155,7 @@ mod ERC7399Lender {
         fn _flashFee(self: @ContractState, amount: u256) -> u256 {
             let fee_: u256 = self.fee.read();
             let FEE_CHARGED: u256 = 1000;
-            let result: u256 = (amount * fee_)/ 1000_u256; // perform some computations
+            let result: u256 = (amount * fee_) / 1000_u256; // perform some computations
             result
         }
 
