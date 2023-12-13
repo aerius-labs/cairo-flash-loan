@@ -40,7 +40,9 @@ mod erc7399LenderTest {
     // token part over //
 
     // Deploy the contract and return its dispatcher.
-    fn deploy(token: ContractAddress, initial_value: u256) -> IERC7399TraitDispatcher {
+    fn deploy_lender(
+        token: ContractAddress, initial_value: u256
+    ) -> (IERC7399TraitDispatcher, ContractAddress) {
         // Set up constructor arguments.
         let mut calldata = ArrayTrait::new();
         token.serialize(ref calldata);
@@ -54,21 +56,29 @@ mod erc7399LenderTest {
 
         // Return the dispatcher.
         // The dispatcher allows to interact with the contract based on its interface.
-        IERC7399TraitDispatcher { contract_address }
+        (IERC7399TraitDispatcher { contract_address }, contract_address)
     }
 
     #[test]
     #[available_gas(2000000000)]
-    fn test_deploy() {
-        let initial_value: u256 = 0;
+    fn test_max_flash_loan() {
+        let flashFee: u256 = 3;
+        let initial_reserves: u256 = 0;
         let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
-        let contract = deploy(token, initial_value);
-        assert(contract.maxFlashLoan() == initial_value, 'Testing');
+        let (lenderContract, lenderAddress) = deploy_lender(token, initial_reserves);
+        assert(lenderContract.maxFlashLoan() == initial_reserves, 'Testing');
+    }
 
-        let recipient = contract_address_const::<1>();
-        let value: u256 = 100;
-        assert(tokenDispatcher.balance_of(recipient) == value, 'initial test');
-        tokenExternalDispatcher.mint(recipient, value);
-        assert(tokenDispatcher.balance_of(recipient) == value, 'final test');
+    #[test]
+    #[available_gas(2000000000)]
+    fn test_max_flash_loan_sync() {
+        let flashFee: u256 = 3;
+        let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
+        let (lenderContract, lenderAddress) = deploy_lender(token, flashFee);
+        assert(lenderContract.maxFlashLoanSync(token) == 0_u256, 'Error in Intital lenderReserves');
+        tokenExternalDispatcher.mint(lenderAddress, 1000_u256);
+        assert(
+            lenderContract.maxFlashLoanSync(token) == 1000_u256, 'Error in Final lenderReserves'
+        );
     }
 }
