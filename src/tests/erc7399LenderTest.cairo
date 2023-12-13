@@ -1,5 +1,6 @@
 mod erc7399LenderTest {
     use core::serde::Serde;
+    use integer::BoundedInt;
     use my_project::erc7399Lender::{
         IERC7399RecieverTrait, IERC7399RecieverTraitDispatcher, IERC7399TraitDispatcher,
         IERC7399TraitDispatcherTrait, ERC7399Lender
@@ -80,5 +81,26 @@ mod erc7399LenderTest {
         assert(
             lenderContract.maxFlashLoanSync(token) == 1000_u256, 'Error in Final lenderReserves'
         );
+    }
+
+    #[test]
+    #[available_gas(2000000000)]
+    fn test_flash_fee() {
+        let flashFee: u256 = 10;
+        let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
+        let (lenderContract, lenderAddress) = deploy_lender(token, flashFee);
+
+        let amount: u256 = 100;
+        let reserves: u256 = lenderContract.maxFlashLoan();
+        let cal_fee: u256 = lenderContract.flashFee(token, amount);
+        // Original fee calculation //
+        let FEE_CHARGED: u256 = 1000;
+        let result: u256 = (amount * flashFee) / FEE_CHARGED;
+        // original fee calculation //
+        if amount <= reserves {
+            assert(cal_fee == result, 'Error in flashfee calculation');
+        } else {
+            assert(cal_fee == BoundedInt::max(), 'Error in flashfee calculation');
+        }
     }
 }
