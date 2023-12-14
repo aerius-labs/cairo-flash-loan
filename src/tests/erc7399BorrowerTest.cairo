@@ -1,8 +1,12 @@
-mod erc7399LenderTest {
+mod erc7399BorrowerTest {
     use core::serde::Serde;
+    use core::debug::PrintTrait;
     use integer::BoundedInt;
     use my_project::erc7399Lender::{
         IERC7399TraitDispatcher, IERC7399TraitDispatcherTrait, ERC7399Lender
+    };
+    use my_project::erc7399Borrower::{
+        IERC7399RecieverTraitDispatcher, IERC7399RecieverTraitDispatcherTrait, ERC7399Borrower
     };
     // Import the deploy syscall to be able to deploy the contract.
     use starknet::class_hash::Felt252TryIntoClassHash;
@@ -58,48 +62,47 @@ mod erc7399LenderTest {
         // The dispatcher allows to interact with the contract based on its interface.
         (IERC7399TraitDispatcher { contract_address }, contract_address)
     }
+    // Deploy the borrower //
+    fn deploy_borrower(
+        lenderAddress: ContractAddress
+    ) -> (IERC7399RecieverTraitDispatcher, ContractAddress) {
+        let mut calldata = ArrayTrait::new();
+        lenderAddress.serialize(ref calldata);
 
-    #[test]
-    #[available_gas(2000000000)]
-    fn test_max_flash_loan() {
-        let flashFee: u256 = 3;
-        let initial_reserves: u256 = 0;
-        let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
-        let (lenderContract, lenderAddress) = deploy_lender(token, initial_reserves);
-        assert(lenderContract.maxFlashLoan() == initial_reserves, 'Testing');
+        // Declare and deploy
+        let (contract_address, _) = deploy_syscall(
+            ERC7399Borrower::TEST_CLASS_HASH.try_into().unwrap(), 0, calldata.span(), false
+        )
+            .unwrap();
+
+        // Return the dispatcher.
+        // The dispatcher allows to interact with the contract based on its interface.
+        (IERC7399RecieverTraitDispatcher { contract_address }, contract_address)
     }
 
     #[test]
     #[available_gas(2000000000)]
-    fn test_max_flash_loan_sync() {
-        let flashFee: u256 = 3;
-        let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
-        let (lenderContract, lenderAddress) = deploy_lender(token, flashFee);
-        assert(lenderContract.maxFlashLoanSync(token) == 0_u256, 'Error in Intital lenderReserves');
-        tokenExternalDispatcher.mint(lenderAddress, 1000_u256);
-        assert(
-            lenderContract.maxFlashLoanSync(token) == 1000_u256, 'Error in Final lenderReserves'
-        );
-    }
-
-    #[test]
-    #[available_gas(2000000000)]
-    fn test_flash_fee() {
+    fn test_flash_borrow() {
         let flashFee: u256 = 10;
         let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
         let (lenderContract, lenderAddress) = deploy_lender(token, flashFee);
+        let (borrowerContract, borrowerAddress) = deploy_borrower(lenderAddress);
 
-        let amount: u256 = 100;
-        let reserves: u256 = lenderContract.maxFlashLoan();
-        let cal_fee: u256 = lenderContract.flashFee(token, amount);
-        // Original fee calculation //
-        let FEE_CHARGED: u256 = 1000;
-        let result: u256 = (amount * flashFee) / FEE_CHARGED;
-        // original fee calculation //
-        if amount <= reserves {
-            assert(cal_fee == result, 'Error in flashfee calculation');
-        } else {
-            assert(cal_fee == BoundedInt::max(), 'Error in flashfee calculation');
-        }
+        // fund something to lender //
+        tokenExternalDispatcher.mint(lenderAddress, 1000_u256);
+        // calling the sync function //
+        lenderContract.maxFlashLoanSync(token);
+
+        // Fake the caller address to address 1
+        let caller = contract_address_const::<1>();
+        set_caller_address(caller);
+        // this is done because initially borrower has zero token but fee cal is 1 so when transferring 
+        // only amount will be transfered to borrower but amount+fee is the repayment that need to transferred
+        // so we have to add fee manually or make it smaller // 
+        tokenExternalDispatcher.mint(borrowerAddress, 1_u256);
+
+        borrowerContract.flashBorrow(token, 100_u256, 'flash borrow');
+        assert(tokenDispatcher.balance_of(lenderAddress) == 1001_u256, 'lender balance');
+        assert(tokenDispatcher.balance_of(borrowerAddress) == 0_u256, 'borrower balance');
     }
 }
