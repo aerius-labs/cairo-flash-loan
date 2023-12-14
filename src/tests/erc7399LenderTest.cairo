@@ -102,4 +102,28 @@ mod erc7399LenderTest {
             assert(cal_fee == BoundedInt::max(), 'Error in flashfee calculation');
         }
     }
+
+    #[test]
+    #[should_panic]
+    #[available_gas(2000000000)]
+    fn test_max_flash_loan_sync_token_address() {
+        let flashFee: u256 = 3;
+        let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
+        let (lenderContract, lenderAddress) = deploy_lender(token, flashFee);
+        let fakeAddress = contract_address_const::<121>();
+        assert(lenderContract.maxFlashLoanSync(fakeAddress) == 0_u256, 'Error in Intital lenderReserves');
+    }
+
+    #[test]
+    #[should_panic]
+    #[available_gas(2000000000)]
+    fn test_flash_fee_token_address() {
+        let flashFee: u256 = 10;
+        let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
+        let (lenderContract, lenderAddress) = deploy_lender(token, flashFee);
+
+        let amount: u256 = 100;
+        let fakeAddress = contract_address_const::<121>();
+        let cal_fee: u256 = lenderContract.flashFee(fakeAddress, amount);
+    }
 }
