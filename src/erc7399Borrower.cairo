@@ -63,7 +63,6 @@ mod ERC7399Borrower {
     use starknet::get_caller_address;
     use starknet::ContractAddress;
     use openzeppelin::token::erc20::ERC20Component;
-    use openzeppelin::token::erc20::interface::IERC20Dispatcher;
     use starknet::info::get_contract_address;
     use super::{IERC7399TraitDispatcher, IERC7399TraitDispatcherTrait};
 
