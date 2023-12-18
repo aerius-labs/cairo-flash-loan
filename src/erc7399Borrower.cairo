@@ -58,7 +58,6 @@ trait IERC7399Trait<TState> {
     fn flash(
         ref self: TState,
         loanReceiver: ContractAddress,
-        flash_lender: ContractAddress,
         asset: ContractAddress,
         amount: u256,
         data: felt252,
@@ -116,7 +115,7 @@ mod ERC7399Borrower {
             // calculated replayment_ so that only lender can perform transfer when calling lender contract //
             IERC20Dispatcher { contract_address: token }.approve(flash_lender, repayment_);
             let _bool: bool = IERC7399TraitDispatcher { contract_address: flash_lender }
-                .flash(this_contract, flash_lender, token, amount, data);
+                .flash(this_contract, token, amount, data);
             _bool
         }
     }

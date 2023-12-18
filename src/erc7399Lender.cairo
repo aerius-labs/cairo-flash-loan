@@ -27,7 +27,6 @@ trait IERC7399Trait<TState> {
     fn flash(
         ref self: TState,
         loanReceiver: ContractAddress,
-        flash_lender: ContractAddress,
         asset: ContractAddress,
         amount: u256,
         data: felt252,
@@ -64,6 +63,7 @@ trait IERC7399RecieverTrait<TState> {
         data: felt252
     ) -> bool;
 }
+
 
 #[starknet::contract]
 mod ERC7399Lender {
@@ -138,7 +138,6 @@ mod ERC7399Lender {
         fn flash(
             ref self: ContractState,
             loanReceiver: ContractAddress,
-            flash_lender: ContractAddress,
             asset: ContractAddress,
             amount: u256,
             data: felt252
@@ -146,6 +145,7 @@ mod ERC7399Lender {
             let assetAddress = self.assetAddress.read();
             assert(assetAddress == asset, 'asset is not used by lender');
             let feeCal = self._flashFee(amount);
+            let flash_lender = get_contract_address();
             // when called from borrower it is borrower address //
             let initiator: ContractAddress = get_caller_address();
             let updatedFee: u256 = amount + feeCal;
