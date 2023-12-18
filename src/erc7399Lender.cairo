@@ -27,6 +27,7 @@ trait IERC7399Trait<TState> {
     fn flash(
         ref self: TState,
         loanReceiver: ContractAddress,
+        flash_lender: ContractAddress,
         asset: ContractAddress,
         amount: u256,
         data: felt252,
@@ -48,13 +49,20 @@ trait IERC7399RecieverTrait<TState> {
     fn onFlashLoan(
         ref self: TState,
         initiator: ContractAddress,
+        flash_lender: ContractAddress,
         token: ContractAddress,
         amount: u256,
         fee: u256,
         data: felt252
     ) -> bool;
 
-    fn flashBorrow(ref self: TState, token: ContractAddress, amount: u256, data: felt252) -> bool;
+    fn flashBorrow(
+        ref self: TState,
+        token: ContractAddress,
+        flash_lender: ContractAddress,
+        amount: u256,
+        data: felt252
+    ) -> bool;
 }
 
 #[starknet::contract]
@@ -66,24 +74,24 @@ mod ERC7399Lender {
     use starknet::info::get_contract_address;
     use super::{IERC7399RecieverTraitDispatcher, IERC7399RecieverTraitDispatcherTrait};
 
-    /// @dev 
     #[storage]
     struct Storage {
         owner: ContractAddress,
         assetAddress: ContractAddress,
-        lenderAddress: ContractAddress,
         fee: u256,
         reserves: u256
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, assetAddress: ContractAddress, fee: u256) {
-        let CALLER: ContractAddress = get_caller_address();
-        let this_contract = get_contract_address();
-        self.owner.write(CALLER);
+    fn constructor(
+        ref self: ContractState,
+        ownerAddress: ContractAddress,
+        assetAddress: ContractAddress,
+        fee: u256
+    ) {
         self.fee.write(fee);
         self.assetAddress.write(assetAddress);
-        self.lenderAddress.write(this_contract);
+        self.owner.write(ownerAddress);
     }
 
     #[event]
@@ -103,6 +111,10 @@ mod ERC7399Lender {
     #[external(v0)]
     impl IERC7399TraitImpl of super::IERC7399Trait<ContractState> {
         /// this will read the total resevres of the lender contract
+        fn maxFlashLoan(self: @ContractState) -> u256 {
+            self.reserves.read()
+        }
+
         fn maxFlashLoanSync(ref self: ContractState, asset: ContractAddress) -> u256 {
             let assetAddress = self.assetAddress.read();
             assert(assetAddress == asset, 'asset is not used by lender');
@@ -126,6 +138,7 @@ mod ERC7399Lender {
         fn flash(
             ref self: ContractState,
             loanReceiver: ContractAddress,
+            flash_lender: ContractAddress,
             asset: ContractAddress,
             amount: u256,
             data: felt252
@@ -133,20 +146,14 @@ mod ERC7399Lender {
             let assetAddress = self.assetAddress.read();
             assert(assetAddress == asset, 'asset is not used by lender');
             let feeCal = self._flashFee(amount);
-            // when called from borrower get_contract_address is borrower
-            let this_contract = self.lenderAddress.read();
             // when called from borrower it is borrower address //
             let initiator: ContractAddress = get_caller_address();
             let updatedFee: u256 = amount + feeCal;
             self._serveLoan(loanReceiver, amount);
-            self._onFlashLoan(loanReceiver, initiator, asset, amount, feeCal, data);
-            self._acceptTransfer(asset, initiator, this_contract, updatedFee);
+            self._onFlashLoan(loanReceiver, initiator, flash_lender, asset, amount, feeCal, data);
+            self._acceptTransfer(asset, initiator, flash_lender, updatedFee);
             self.emit(Flash { from: asset, amount: amount, fee: feeCal });
             true
-        }
-
-        fn maxFlashLoan(self: @ContractState) -> u256 {
-            self.reserves.read()
         }
     }
 
@@ -195,13 +202,14 @@ mod ERC7399Lender {
             ref self: ContractState,
             loanReceiver: ContractAddress,
             initiator: ContractAddress,
+            flash_lender: ContractAddress,
             token: ContractAddress,
             amount: u256,
             fee: u256,
             data: felt252
         ) {
             IERC7399RecieverTraitDispatcher { contract_address: loanReceiver }
-                .onFlashLoan(initiator, token, amount, fee, data);
+                .onFlashLoan(initiator, flash_lender, token, amount, fee, data);
         }
     }
 }
