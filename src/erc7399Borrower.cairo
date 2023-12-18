@@ -15,13 +15,20 @@ trait IERC7399RecieverTrait<TState> {
     fn onFlashLoan(
         ref self: TState,
         initiator: ContractAddress,
+        flash_lender: ContractAddress,
         token: ContractAddress,
         amount: u256,
         fee: u256,
         data: felt252
     ) -> bool;
 
-    fn flashBorrow(ref self: TState, token: ContractAddress, amount: u256, data: felt252) -> bool;
+    fn flashBorrow(
+        ref self: TState,
+        token: ContractAddress,
+        flash_lender: ContractAddress,
+        amount: u256,
+        data: felt252
+    ) -> bool;
 }
 
 #[starknet::interface]
@@ -51,6 +58,7 @@ trait IERC7399Trait<TState> {
     fn flash(
         ref self: TState,
         loanReceiver: ContractAddress,
+        flash_lender: ContractAddress,
         asset: ContractAddress,
         amount: u256,
         data: felt252,
@@ -65,29 +73,21 @@ mod ERC7399Borrower {
     use starknet::info::get_contract_address;
     use super::{IERC7399TraitDispatcher, IERC7399TraitDispatcherTrait};
 
-    /// @dev 
     #[storage]
-    struct Storage {
-        lenderAddress: ContractAddress,
-    }
-
-    #[constructor]
-    fn constructor(ref self: ContractState, lenderAddress: ContractAddress,) {
-        self.lenderAddress.write(lenderAddress);
-    }
+    struct Storage {}
 
     #[external(v0)]
     impl IERC7399RecieverTraitIml of super::IERC7399RecieverTrait<ContractState> {
         fn onFlashLoan(
             ref self: ContractState,
             initiator: ContractAddress,
+            flash_lender: ContractAddress,
             token: ContractAddress,
             amount: u256,
             fee: u256,
             data: felt252
         ) -> bool {
             let caller: ContractAddress = get_caller_address();
-            let flash_lender: ContractAddress = self.lenderAddress.read();
             let this_address: ContractAddress = get_contract_address();
 
             assert(caller == flash_lender, 'caller must be lender');
@@ -103,17 +103,20 @@ mod ERC7399Borrower {
         }
 
         fn flashBorrow(
-            ref self: ContractState, token: ContractAddress, amount: u256, data: felt252
+            ref self: ContractState,
+            token: ContractAddress,
+            flash_lender: ContractAddress,
+            amount: u256,
+            data: felt252
         ) -> bool {
             let this_contract = get_contract_address();
-            let flash_lender = self.lenderAddress.read();
             let feeCal = IERC7399TraitDispatcher { contract_address: flash_lender }
                 .flashFee(token, amount);
             let repayment_: u256 = (amount + feeCal);
             // calculated replayment_ so that only lender can perform transfer when calling lender contract //
             IERC20Dispatcher { contract_address: token }.approve(flash_lender, repayment_);
             let _bool: bool = IERC7399TraitDispatcher { contract_address: flash_lender }
-                .flash(this_contract, token, amount, data);
+                .flash(this_contract, flash_lender, token, amount, data);
             _bool
         }
     }
