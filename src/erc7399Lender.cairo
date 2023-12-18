@@ -61,7 +61,7 @@ trait IERC7399RecieverTrait<TState> {
 mod ERC7399Lender {
     use integer::BoundedInt;
     use openzeppelin::token::erc20::interface::IERC20DispatcherTrait;
-    use starknet::get_caller_address;
+    use starknet::{ContractAddress, get_caller_address};
     use openzeppelin::token::erc20::ERC20Component;
     use openzeppelin::token::erc20::interface::{IERC20DispatcherTrait, IERC20Dispatcher};
     use starknet::info::get_contract_address;
