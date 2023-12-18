@@ -60,7 +60,7 @@ trait IERC7399Trait<TState> {
 #[starknet::contract]
 mod ERC7399Borrower {
     use openzeppelin::token::erc20::interface::{IERC20DispatcherTrait, IERC20Dispatcher};
-    use starknet::get_caller_address;
+    use starknet::{ContractAddress, get_caller_address};
     use starknet::ContractAddress;
     use openzeppelin::token::erc20::ERC20Component;
     use starknet::info::get_contract_address;
