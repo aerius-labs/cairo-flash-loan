@@ -64,6 +64,11 @@ trait IERC7399RecieverTrait<TState> {
     ) -> bool;
 }
 
+#[starknet::interface]
+trait IERC7399OwnerTrait<TState> {
+    fn updateFee(ref self: TState,amount:u256);
+    fn deFund(ref self: TState);
+}
 
 #[starknet::contract]
 mod ERC7399Lender {
@@ -154,6 +159,24 @@ mod ERC7399Lender {
             self._acceptTransfer(asset, initiator, flash_lender, updatedFee);
             self.emit(Flash { from: asset, amount: amount, fee: feeCal });
             true
+        }
+    }
+
+    #[external(v0)]
+    impl IERC7399OwnerTraitImpl of super::IERC7399OwnerTrait<ContractState>{
+        fn updateFee(ref self:ContractState,amount: u256) {
+            let owner = self.owner.read();
+            let caller = get_caller_address();
+            assert(owner == caller, 'owner is not caller');
+            self.fee.write(amount);
+        }
+
+        fn deFund(ref self: ContractState) {
+            let owner = self.owner.read();
+            let caller = get_caller_address();
+            assert(owner == caller, 'owner is not caller');
+
+            
         }
     }
 
