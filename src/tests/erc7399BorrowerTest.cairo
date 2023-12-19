@@ -45,10 +45,11 @@ mod erc7399BorrowerTest {
 
     // Deploy the contract and return its dispatcher.
     fn deploy_lender(
-        token: ContractAddress, initial_value: u256
+        owner: ContractAddress, token: ContractAddress, initial_value: u256
     ) -> (IERC7399TraitDispatcher, ContractAddress) {
         // Set up constructor arguments.
         let mut calldata = ArrayTrait::new();
+        owner.serialize(ref calldata);
         token.serialize(ref calldata);
         initial_value.serialize(ref calldata);
 
@@ -63,11 +64,8 @@ mod erc7399BorrowerTest {
         (IERC7399TraitDispatcher { contract_address }, contract_address)
     }
     // Deploy the borrower //
-    fn deploy_borrower(
-        lenderAddress: ContractAddress
-    ) -> (IERC7399RecieverTraitDispatcher, ContractAddress) {
+    fn deploy_borrower() -> (IERC7399RecieverTraitDispatcher, ContractAddress) {
         let mut calldata = ArrayTrait::new();
-        lenderAddress.serialize(ref calldata);
 
         // Declare and deploy
         let (contract_address, _) = deploy_syscall(
@@ -85,23 +83,24 @@ mod erc7399BorrowerTest {
     fn test_flash_borrow() {
         let flashFee: u256 = 10;
         let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
-        let (lenderContract, lenderAddress) = deploy_lender(token, flashFee);
-        let (borrowerContract, borrowerAddress) = deploy_borrower(lenderAddress);
+        let owner = contract_address_const::<1>();
+        let (lenderContract, lenderAddress) = deploy_lender(owner, token, flashFee);
+        let (borrowerContract, borrowerAddress) = deploy_borrower();
 
         // fund something to lender //
         tokenExternalDispatcher.mint(lenderAddress, 1000_u256);
         // calling the sync function //
         lenderContract.maxFlashLoanSync(token);
 
-        // Fake the caller address to address 1
-        let caller = contract_address_const::<1>();
+        // Fake the caller address to address 
+        let caller = contract_address_const::<211>();
         set_caller_address(caller);
         // this is done because initially borrower has zero token but fee cal is 1 so when transferring 
         // only amount will be transfered to borrower but amount+fee is the repayment that need to transferred
         // so we have to add fee manually or make it smaller // 
         tokenExternalDispatcher.mint(borrowerAddress, 1_u256);
 
-        borrowerContract.flashBorrow(token, 100_u256, 'flash borrow');
+        borrowerContract.flashBorrow(token, lenderAddress, 100_u256, 'flash borrow');
         assert(tokenDispatcher.balance_of(lenderAddress) == 1001_u256, 'lender balance');
         assert(tokenDispatcher.balance_of(borrowerAddress) == 0_u256, 'borrower balance');
     }
