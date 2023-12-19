@@ -66,7 +66,7 @@ trait IERC7399RecieverTrait<TState> {
 
 #[starknet::interface]
 trait IERC7399OwnerTrait<TState> {
-    fn updateFee(ref self: TState,amount:u256);
+    fn updateFee(ref self: TState, amount: u256);
     fn deFund(ref self: TState);
 }
 
@@ -163,20 +163,24 @@ mod ERC7399Lender {
     }
 
     #[external(v0)]
-    impl IERC7399OwnerTraitImpl of super::IERC7399OwnerTrait<ContractState>{
-        fn updateFee(ref self:ContractState,amount: u256) {
+    impl IERC7399OwnerTraitImpl of super::IERC7399OwnerTrait<ContractState> {
+        fn updateFee(ref self: ContractState, amount: u256) {
             let owner = self.owner.read();
             let caller = get_caller_address();
-            assert(owner == caller, 'owner is not caller');
+            assert(owner == caller, 'caller is not owner');
             self.fee.write(amount);
         }
 
         fn deFund(ref self: ContractState) {
             let owner = self.owner.read();
             let caller = get_caller_address();
-            assert(owner == caller, 'owner is not caller');
+            assert(owner == caller, 'caller is not owner');
 
-            
+            let asset: ContractAddress = self.assetAddress.read();
+            let this_address: ContractAddress = get_contract_address();
+            let amount: u256 = IERC20Dispatcher { contract_address: asset }
+                .balance_of(this_address);
+            IERC20Dispatcher { contract_address: asset }.transfer(owner, amount);
         }
     }
 
