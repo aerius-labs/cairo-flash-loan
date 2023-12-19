@@ -2,7 +2,7 @@ mod erc7399LenderTest {
     use core::serde::Serde;
     use integer::BoundedInt;
     use my_project::erc7399Lender::{
-        IERC7399TraitDispatcher, IERC7399TraitDispatcherTrait, ERC7399Lender
+        IERC7399TraitDispatcher, IERC7399TraitDispatcherTrait, ERC7399Lender,
     };
     // Import the deploy syscall to be able to deploy the contract.
     use starknet::class_hash::Felt252TryIntoClassHash;
@@ -41,10 +41,11 @@ mod erc7399LenderTest {
 
     // Deploy the contract and return its dispatcher.
     fn deploy_lender(
-        token: ContractAddress, initial_value: u256
+        owner: ContractAddress, token: ContractAddress, initial_value: u256
     ) -> (IERC7399TraitDispatcher, ContractAddress) {
         // Set up constructor arguments.
         let mut calldata = ArrayTrait::new();
+        owner.serialize(ref calldata);
         token.serialize(ref calldata);
         initial_value.serialize(ref calldata);
 
@@ -65,7 +66,8 @@ mod erc7399LenderTest {
         let flashFee: u256 = 3;
         let initial_reserves: u256 = 0;
         let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
-        let (lenderContract, lenderAddress) = deploy_lender(token, initial_reserves);
+        let owner = contract_address_const::<12123>();
+        let (lenderContract, lenderAddress) = deploy_lender(owner, token, initial_reserves);
         assert(lenderContract.maxFlashLoan() == initial_reserves, 'Testing');
     }
 
@@ -74,7 +76,8 @@ mod erc7399LenderTest {
     fn test_max_flash_loan_sync() {
         let flashFee: u256 = 3;
         let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
-        let (lenderContract, lenderAddress) = deploy_lender(token, flashFee);
+        let owner = contract_address_const::<12123>();
+        let (lenderContract, lenderAddress) = deploy_lender(owner, token, flashFee);
         assert(lenderContract.maxFlashLoanSync(token) == 0_u256, 'Error in Intital lenderReserves');
         tokenExternalDispatcher.mint(lenderAddress, 1000_u256);
         assert(
@@ -87,7 +90,8 @@ mod erc7399LenderTest {
     fn test_flash_fee() {
         let flashFee: u256 = 10;
         let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
-        let (lenderContract, lenderAddress) = deploy_lender(token, flashFee);
+        let owner = contract_address_const::<12123>();
+        let (lenderContract, lenderAddress) = deploy_lender(owner, token, flashFee);
 
         let amount: u256 = 100;
         let reserves: u256 = lenderContract.maxFlashLoan();
@@ -109,9 +113,12 @@ mod erc7399LenderTest {
     fn test_max_flash_loan_sync_token_address() {
         let flashFee: u256 = 3;
         let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
-        let (lenderContract, lenderAddress) = deploy_lender(token, flashFee);
+        let owner = contract_address_const::<12123>();
+        let (lenderContract, lenderAddress) = deploy_lender(owner, token, flashFee);
         let fakeAddress = contract_address_const::<121>();
-        assert(lenderContract.maxFlashLoanSync(fakeAddress) == 0_u256, 'Error in Intital lenderReserves');
+        assert(
+            lenderContract.maxFlashLoanSync(fakeAddress) == 0_u256, 'asset is not used by lender'
+        );
     }
 
     #[test]
@@ -120,7 +127,8 @@ mod erc7399LenderTest {
     fn test_flash_fee_token_address() {
         let flashFee: u256 = 10;
         let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
-        let (lenderContract, lenderAddress) = deploy_lender(token, flashFee);
+        let owner = contract_address_const::<12123>();
+        let (lenderContract, lenderAddress) = deploy_lender(owner, token, flashFee);
 
         let amount: u256 = 100;
         let fakeAddress = contract_address_const::<121>();
