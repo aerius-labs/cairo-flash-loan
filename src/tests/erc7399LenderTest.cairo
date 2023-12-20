@@ -157,28 +157,33 @@ mod erc7399LenderTest {
     fn test_update_fee() {
         let flashFee: u256 = 10;
         let owner: ContractAddress = contract_address_const::<12123>();
-        // set_caller_address(owner);
-        ///set_contract_address(owner);
         let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
-        // (get_caller_address()).print();
-        // get_contract_address().print();
-
         let (lenderContract, lenderOwnerContract, lenderAddress) = deploy_lender(
             owner, token, flashFee
         );
-        // set_contract_address(owner);
-        // get_contract_address().print();
-        // token.print();
-        // lenderAddress.print();
         tokenExternalDispatcher.mint(lenderAddress, 1000_u256);
         lenderContract.maxFlashLoanSync(token);
         let initialFee: u256 = lenderContract.flashFee(token, 100_u256);
-        // set_caller_address(owner);
-        // (get_caller_address()).print();
-        // now updating fee by owner //
-        set_caller_address(owner);
+        set_contract_address(owner);
         lenderOwnerContract.updateFee(100_u256);
         let finalFee: u256 = lenderContract.flashFee(token, 100_256);
         assert(initialFee != finalFee, 'fee not updated by owner');
+    }
+
+    #[test]
+    #[available_gas(2000000000)]
+    fn test_defund() {
+        let flashFee: u256 = 10;
+        let owner: ContractAddress = contract_address_const::<12123>();
+        let (tokenDispatcher, tokenExternalDispatcher, token) = deploy_token();
+        let (lenderContract, lenderOwnerContract, lenderAddress) = deploy_lender(
+            owner, token, flashFee
+        );
+        tokenExternalDispatcher.mint(lenderAddress, 1000_u256);
+        lenderContract.maxFlashLoanSync(token);
+        set_contract_address(owner);
+        lenderOwnerContract.deFund();
+        let finalBalance: u256 = tokenDispatcher.balance_of(lenderAddress);
+        assert(finalBalance == 0_u256, 'Defund not successfull');
     }
 }
