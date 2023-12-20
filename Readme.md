@@ -52,7 +52,7 @@ This will ensure that the version of Scarb you use to work on a project always m
 You can add the following to your Sacrb project's `Scarb.toml`:
 
 ```toml
-openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.8.0" }
+openzeppelin = { git = "https://github.com/aerius-labs/cairo-flash-loan/" }
 starknet = "2.3.1"
 [[target.starknet-contract]]
 casm = true
