@@ -31,46 +31,13 @@ trait IERC7399RecieverTrait<TState> {
     ) -> bool;
 }
 
-#[starknet::interface]
-trait IERC7399Trait<TState> {
-    /// @dev The amount of currency available to be lent.
-    /// @param asset The loan currency.
-    /// @return The amount of `asset` that can be borrowed.
-    fn maxFlashLoanSync(ref self: TState, asset: ContractAddress) -> u256;
-
-    fn maxFlashLoan(self: @TState) -> u256;
-
-    /// @dev The fee to be charged for a given loan. Returns type(uint256).max if the loan is not possible.
-    /// @param asset The loan currency.
-    /// @param amount The amount of assets lent.
-    /// @return The amount of `asset` to be charged for the loan, on top of the returned principal.
-
-    fn flashFee(self: @TState, asset: ContractAddress, amount: u256) -> u256;
-
-    /// @dev Initiate a flash loan.
-    /// @param loanReceiver The address receiving the flash loan
-    /// @param asset The asset to be loaned
-    /// @param amount The amount to loaned
-    /// @param data The ABI encoded user data
-    /// @param callback The address and signature of the callback function
-    /// @return result ABI encoded result of the callback
-
-    fn flash(
-        ref self: TState,
-        loanReceiver: ContractAddress,
-        asset: ContractAddress,
-        amount: u256,
-        data: felt252,
-    ) -> bool;
-}
-
 #[starknet::contract]
 mod ERC7399Borrower {
     use openzeppelin::token::erc20::interface::{IERC20DispatcherTrait, IERC20Dispatcher};
     use starknet::{ContractAddress, get_caller_address};
     use openzeppelin::token::erc20::ERC20Component;
     use starknet::info::get_contract_address;
-    use super::{IERC7399TraitDispatcher, IERC7399TraitDispatcherTrait};
+    use my_project::erc7399Lender::{IERC7399TraitDispatcher, IERC7399TraitDispatcherTrait};
 
     #[storage]
     struct Storage {}
